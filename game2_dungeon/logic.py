@@ -19,6 +19,7 @@ class DungeonLogic:
     def process_turn(self, action: str) -> Dict[str, object]:
         # Append user action
         self.history.append({"role": "user", "content": action})
+        content = ""
         try:
             response = ollama.chat(
                 model=self.model,
