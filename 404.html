@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lost in the Keep — Neon Keep</title>
+  <link rel="stylesheet" href="/shared/theme.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+      padding: calc(var(--nk-space) * 3) var(--nk-space);
+      text-align: center;
+      gap: calc(var(--nk-space) * 2);
+    }
+    .nk-404-code {
+      font-family: var(--nk-font-display);
+      font-size: clamp(3rem, 18vw, 7rem);
+      color: var(--nk-danger);
+      text-shadow: 0 0 8px var(--nk-danger), 0 0 26px var(--nk-neon-2);
+      line-height: 1;
+      margin: 0;
+    }
+    .nk-404-msg {
+      color: var(--nk-muted);
+      max-width: 32rem;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="nk-crt" aria-hidden="true"></div>
+  <p class="nk-404-code">404</p>
+  <h1 class="nk-title">Lost in the Keep</h1>
+  <p class="nk-404-msg">
+    That corridor does not exist. The gargoyle is not telling you which one does.
+  </p>
+  <a class="nk-btn" href="/">&larr; Keep</a>
+</body>
+</html>
