@@ -14,6 +14,28 @@ Play the live site: https://neon-keep.ryanxu.dev/
   the timing window shrinks every wave. Dodge the wrong way once and the run
   is over.
 
+## Controls
+
+**Loophole Guardian** is played entirely with the question menu and the guess
+box. No keyboard shortcuts.
+
+**Reflex Survivor** takes the same actions on either device.
+
+| Action | Desktop | Touch |
+|---|---|---|
+| Dodge | Arrow keys | Swipe |
+| Parry | Space | Tap |
+
+A dodge moves away from the attack. A parry works against any direction, but
+only in the last third of the timing window, and it pays double combo. Press
+it early and it fails like a wrong dodge.
+
+From wave 4 attacks can come in pairs, and any direction not under attack is
+safe. From wave 7 an attack can be a feint: the telegraph lies, so the safe
+answer is to move into it.
+
+You have one hit point. One mistake ends the run.
+
 ## How to play
 
 Choose one method.
