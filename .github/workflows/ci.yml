@@ -37,8 +37,11 @@ jobs:
 
       - name: Run tests
         run: |
-          if [ -d tests ]; then
-            node --test tests/
-          else
-            echo "::notice title=No tests yet::tests/ does not exist; skipping."
+          shopt -s globstar nullglob
+          tests=(tests/**/*.test.js)
+          if [ ${#tests[@]} -eq 0 ]; then
+            echo "::error title=No tests::tests/ has no *.test.js files. The gate would be fake."
+            exit 1
           fi
+          echo "found ${#tests[@]} test file(s)"
+          node --test 'tests/**/*.test.js'

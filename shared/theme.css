@@ -1,0 +1,26 @@
+/* Neon Keep — shared theme. Placeholder token values; Task A finalizes them. */
+:root {
+  --nk-bg: #0a0a12;
+  --nk-bg-panel: #141424;
+  --nk-neon: #00f0ff;
+  --nk-neon-2: #ff2fd0;
+  --nk-danger: #ff3b3b;
+  --nk-text: #e8e8f0;
+  --nk-muted: #8a8aa0;
+  --nk-font-display: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --nk-font-body: system-ui, -apple-system, sans-serif;
+  --nk-radius: 10px;
+  --nk-space: 12px;
+}
+
+body {
+  margin: 0;
+  background: var(--nk-bg);
+  color: var(--nk-text);
+  font-family: var(--nk-font-body);
+}
+
+.nk-btn {}
+.nk-panel {}
+.nk-title {}
+.nk-crt {}
