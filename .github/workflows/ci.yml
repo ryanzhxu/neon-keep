@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Syntax-check every JS file
+        run: |
+          shopt -s globstar nullglob
+          files=(**/*.js)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error title=No JS found::Expected JavaScript sources."
+            exit 1
+          fi
+          for f in "${files[@]}"; do
+            echo "checking $f"
+            node --check "$f"
+          done
+
+      - name: Run tests
+        run: node --test tests/
