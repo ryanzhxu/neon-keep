@@ -9,9 +9,48 @@
 </head>
 <body>
   <div class="nk-crt" aria-hidden="true"></div>
-  <main>
+  <main class="guardian-main">
     <a class="nk-btn" href="../../index.html">&larr; Keep</a>
     <h1 class="nk-title">Loophole Guardian</h1>
+
+    <section class="nk-panel guardian-stage">
+      <div id="gargoyle" class="gargoyle" data-mood="smug" aria-hidden="true">&#128527;</div>
+      <p id="snark" class="snark" aria-live="polite"></p>
+      <div class="budget-meter">
+        <span class="budget-label">Budget</span>
+        <div class="budget-bar"><div id="budget-fill" class="budget-fill"></div></div>
+        <span id="budget-count" class="budget-count"></span>
+      </div>
+    </section>
+
+    <section class="nk-panel guardian-menu" aria-label="Questions">
+      <h2>Ask the Guardian</h2>
+      <div class="menu-row">
+        <label for="letter-input">Letter</label>
+        <input id="letter-input" maxlength="1" type="text" autocomplete="off">
+        <button id="btn-letter" class="nk-btn" type="button">Pick a letter</button>
+      </div>
+      <div class="menu-row">
+        <button id="btn-rhyme" class="nk-btn" type="button">Ask rhyme</button>
+        <button id="btn-length" class="nk-btn" type="button">Ask length</button>
+        <button id="btn-taunt" class="nk-btn" type="button">Demand a loophole</button>
+        <button id="btn-theme" class="nk-btn" type="button">Ask theme</button>
+      </div>
+    </section>
+
+    <section class="nk-panel guardian-log" aria-label="Answers">
+      <h2>Answers</h2>
+      <ul id="log-list" class="log-list"></ul>
+    </section>
+
+    <section class="nk-panel guardian-guess">
+      <form id="guess-form">
+        <label for="guess-input">Final guess</label>
+        <input id="guess-input" type="text" autocomplete="off">
+        <button class="nk-btn" type="submit">Guess</button>
+      </form>
+      <button id="btn-retry" class="nk-btn" type="button" hidden>Retry</button>
+    </section>
   </main>
   <script src="../../shared/store.js"></script>
   <script src="../../shared/audio.js"></script>

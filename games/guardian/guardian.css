@@ -1,1 +1,142 @@
-/* Neon Keep — Loophole Guardian styles. Task B fills this in. */
+/* Neon Keep — Loophole Guardian styles. */
+
+.guardian-main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--nk-space, 12px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--nk-space, 12px);
+}
+
+.guardian-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.gargoyle {
+  font-size: 4rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.gargoyle[data-mood="smug"] { color: var(--nk-neon); }
+.gargoyle[data-mood="nervous"] { color: var(--nk-neon-2); }
+.gargoyle[data-mood="desperate"] { color: var(--nk-danger); animation: guardian-wobble 0.6s infinite; }
+.gargoyle[data-mood="defeated"] { color: var(--nk-muted); filter: grayscale(1); }
+.gargoyle.is-open { transform: scale(1.15) rotate(-4deg); }
+
+@keyframes guardian-wobble {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+.snark {
+  min-height: 1.5em;
+  font-family: var(--nk-font-display);
+  color: var(--nk-text);
+}
+
+.budget-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.budget-label {
+  color: var(--nk-muted);
+  font-size: 0.85rem;
+}
+
+.budget-bar {
+  flex: 1;
+  height: 10px;
+  border-radius: var(--nk-radius);
+  background: var(--nk-bg-panel);
+  overflow: hidden;
+  border: 1px solid var(--nk-muted);
+}
+
+.budget-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--nk-neon);
+  transition: width 0.2s ease, background 0.2s ease;
+}
+
+.budget-count {
+  color: var(--nk-text);
+  font-size: 0.85rem;
+  min-width: 3em;
+  text-align: right;
+}
+
+.guardian-menu h2,
+.guardian-log h2 {
+  margin: 0 0 8px;
+  font-family: var(--nk-font-display);
+  color: var(--nk-neon);
+  font-size: 1rem;
+}
+
+.menu-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.menu-row input[type="text"] {
+  width: 3em;
+  background: var(--nk-bg-panel);
+  color: var(--nk-text);
+  border: 1px solid var(--nk-muted);
+  border-radius: var(--nk-radius);
+  padding: 6px;
+  text-align: center;
+}
+
+.log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.log-list li {
+  background: var(--nk-bg-panel);
+  border-radius: var(--nk-radius);
+  padding: 6px 10px;
+  font-size: 0.9rem;
+}
+
+.guardian-guess form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.guardian-guess input[type="text"] {
+  flex: 1;
+  min-width: 8em;
+  background: var(--nk-bg-panel);
+  color: var(--nk-text);
+  border: 1px solid var(--nk-muted);
+  border-radius: var(--nk-radius);
+  padding: 8px;
+}
+
+@media (max-width: 480px) {
+  .guardian-main { padding: 8px; }
+  .gargoyle { font-size: 3rem; }
+}
