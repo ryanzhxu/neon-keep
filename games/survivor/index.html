@@ -9,10 +9,32 @@
 </head>
 <body>
   <div class="nk-crt" aria-hidden="true"></div>
-  <main>
-    <a class="nk-btn" href="../../index.html">&larr; Keep</a>
-    <h1 class="nk-title">Reflex Survivor</h1>
+  <main class="survivor-main">
+    <div class="survivor-topbar">
+      <a class="nk-btn" href="../../index.html">&larr; Keep</a>
+      <h1 class="nk-title survivor-title">Reflex Survivor</h1>
+    </div>
+
+    <div class="survivor-hud nk-panel" aria-live="polite">
+      <span class="survivor-hp" id="survivor-hp" aria-label="hit points">❤️ 1</span>
+      <span class="survivor-wave">Wave <span id="survivor-wave">0</span></span>
+      <span class="survivor-best">Best <span id="survivor-best">0</span></span>
+    </div>
+
+    <div class="survivor-stage">
+      <canvas id="survivor-canvas" class="survivor-canvas" width="480" height="480"></canvas>
+
+      <div class="survivor-overlay nk-panel" id="survivor-overlay">
+        <p class="survivor-overlay-text" id="survivor-overlay-text">
+          An attack telegraphs a direction. Move the <strong>opposite</strong> way before the bar runs out.
+        </p>
+        <p class="survivor-share" id="survivor-share" hidden></p>
+        <button class="nk-btn" id="survivor-start-btn" type="button">Start</button>
+        <p class="survivor-hint">Desktop: arrow keys. Mobile: swipe to dodge.</p>
+      </div>
+    </div>
   </main>
+
   <script src="../../shared/store.js"></script>
   <script src="../../shared/audio.js"></script>
   <script src="../../shared/juice.js"></script>
