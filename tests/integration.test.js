@@ -54,6 +54,30 @@ test('every local href and src on every page resolves to a real file', () => {
   assert.deepStrictEqual(broken, [], `broken references:\n${broken.join('\n')}`);
 });
 
+// GitHub Pages serves 404.html for any unmatched path, at any depth, so this
+// page alone must use root-absolute references — a relative path would break
+// as soon as the missing URL was more than one level deep.
+test('the 404 page exists, is themed, and can get back to the hub', () => {
+  const p = path.join(ROOT, '404.html');
+  assert.ok(fs.existsSync(p), '404.html is missing; unmatched URLs fall back to GitHub default page');
+  const html = read('404.html');
+
+  assert.match(html, /<meta charset="utf-8">/i, '404 page misses charset');
+  assert.match(html, /name="viewport"/i, '404 page misses viewport');
+  assert.match(html, /href="\/shared\/theme\.css"/, '404 page must load the shared theme by absolute path');
+  assert.match(html, /class="nk-crt"/, '404 page misses the CRT overlay');
+  assert.match(html, /href="\/"/, '404 page must link back to the hub');
+  assert.match(html, /&larr; Keep|← Keep/, '404 page misses the "← Keep" label');
+
+  // Its absolute references must still point at files that exist.
+  const broken = [];
+  for (const [, ref] of html.matchAll(/(?:src|href)="(\/[^"]*)"/g)) {
+    const target = ref === '/' ? 'index.html' : ref.replace(/^\//, '');
+    if (!fs.existsSync(path.join(ROOT, target))) broken.push(ref);
+  }
+  assert.deepStrictEqual(broken, [], `404.html points at missing files: ${broken.join(', ')}`);
+});
+
 test('every page can navigate back to the hub, and the hub reaches both games', () => {
   const hub = read('index.html');
   assert.match(hub, /href="games\/guardian\/index\.html"/, 'hub misses the Guardian tile link');
