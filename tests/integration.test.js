@@ -260,3 +260,56 @@ test('every page wires up a mute toggle', () => {
       `${name} never calls NK.audio.bindMuteButton(...) to wire the mute button`);
   }
 });
+
+// Accessibility floor. These are the things that break a screen reader or a
+// keyboard user outright, as opposed to matters of taste, so they are asserted
+// rather than left to a manual pass nobody repeats.
+test('every page declares a language and a main landmark', () => {
+  for (const page of [...PAGES, '404.html']) {
+    const html = read(page);
+    assert.match(html, /<html[^>]+lang="[a-z]{2}"/i, `${page} has no lang on <html>`);
+    assert.match(html, /<main[\s>]/, `${page} has no <main> landmark`);
+    assert.match(html, /<h1[\s>]/, `${page} has no <h1>`);
+  }
+});
+
+test('every text input has a label bound to it', () => {
+  for (const page of PAGES) {
+    const html = read(page);
+    for (const [, id] of html.matchAll(/<input[^>]*\bid="([^"]+)"/g)) {
+      assert.ok(
+        html.includes(`for="${id}"`) || new RegExp(`<input[^>]*id="${id}"[^>]*aria-label=`).test(html),
+        `${page}: input #${id} has neither a <label for> nor an aria-label`
+      );
+    }
+  }
+});
+
+test('the game surfaces that change on their own announce themselves', () => {
+  const guardian = read('games/guardian/index.html');
+  assert.match(guardian, /id="snark"[^>]*aria-live/, 'the gargoyle line must announce');
+  assert.match(guardian, /id="log-list"[^>]*aria-live/, 'the answers log must announce');
+
+  const survivor = read('games/survivor/index.html');
+  assert.match(survivor, /survivor-hud[^>]*aria-live/, 'the HUD must announce wave and score changes');
+});
+
+test('the canvas has an accessible name and a fallback for browsers without it', () => {
+  const html = read('games/survivor/index.html');
+  const canvas = html.match(/<canvas[\s\S]*?<\/canvas>/);
+  assert.ok(canvas, 'no canvas found');
+  assert.match(canvas[0], /aria-label="[^"]{20,}"/, 'canvas needs a descriptive accessible name');
+  assert.match(canvas[0], /<\/canvas>/, 'canvas needs fallback content between its tags');
+  assert.ok(canvas[0].replace(/<[^>]+>/g, '').trim().length > 0, 'canvas fallback content is empty');
+});
+
+test('every button says what it does', () => {
+  for (const page of [...PAGES, '404.html']) {
+    const html = read(page);
+    for (const [full, inner] of html.matchAll(/<button[^>]*>([\s\S]*?)<\/button>/g)) {
+      const text = inner.replace(/<[^>]+>/g, '').trim();
+      const labelled = /aria-label="[^"]+"/.test(full);
+      assert.ok(text.length > 0 || labelled, `${page}: a button has no text and no aria-label -> ${full.slice(0, 70)}`);
+    }
+  }
+});
