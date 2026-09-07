@@ -99,6 +99,7 @@
       var li = document.createElement('li');
       li.textContent = text;
       els.logList.appendChild(li);
+      els.logList.scrollTop = els.logList.scrollHeight;
     }
   }
 
@@ -119,6 +120,7 @@
 
   function askQuestion(answerText) {
     if (state.over || state.budgetLeft <= 0) return;
+    if (audio && typeof audio.init === 'function') audio.init();
     state.budgetLeft -= 1;
     logEntry(answerText);
     updateBudgetUI();
@@ -205,8 +207,12 @@
   function onSubmitGuess(evt) {
     evt.preventDefault();
     if (state.over) return;
+    if (audio && typeof audio.init === 'function') audio.init();
     var level = currentLevel();
     var value = els.guessInput ? els.guessInput.value : '';
+    state.budgetLeft = Math.max(0, state.budgetLeft - 1);
+    updateBudgetUI();
+    updateMood();
     if (logic.checkGuess(value, level.word)) {
       winLevel();
     } else if (state.budgetLeft <= 0) {
