@@ -1,1 +1,102 @@
-/* Neon Keep — Reflex Survivor styles. Task C fills this in. */
+/* Neon Keep — Reflex Survivor styles. */
+
+.survivor-main {
+  box-sizing: border-box;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: var(--nk-space);
+  display: flex;
+  flex-direction: column;
+  gap: var(--nk-space);
+}
+
+.survivor-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--nk-space);
+  flex-wrap: wrap;
+}
+
+.survivor-title {
+  font-size: clamp(1.25rem, 5vw, 2rem);
+}
+
+.survivor-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nk-space);
+  font-family: var(--nk-font-display);
+  font-size: 1rem;
+}
+
+.survivor-hp {
+  color: var(--nk-danger);
+}
+
+.survivor-wave,
+.survivor-best {
+  color: var(--nk-text);
+}
+
+.survivor-wave span,
+.survivor-best span {
+  color: var(--nk-neon);
+}
+
+.survivor-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 70vh;
+}
+
+.survivor-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--nk-radius);
+  border: 1px solid var(--nk-neon-2);
+  background: var(--nk-bg-panel);
+  touch-action: none;
+}
+
+.survivor-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nk-space);
+  text-align: center;
+  padding: calc(var(--nk-space) * 2);
+}
+
+.survivor-overlay[hidden] {
+  display: none;
+}
+
+.survivor-overlay-text {
+  margin: 0;
+  color: var(--nk-text);
+  max-width: 30ch;
+}
+
+.survivor-hint {
+  margin: 0;
+  color: var(--nk-muted);
+  font-size: 0.85rem;
+}
+
+.survivor-share {
+  margin: 0;
+  color: var(--nk-neon-2);
+  font-family: var(--nk-font-display);
+}
+
+@media (max-width: 420px) {
+  .survivor-stage {
+    max-height: 60vh;
+  }
+}
