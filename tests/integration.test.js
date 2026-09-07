@@ -211,3 +211,48 @@ test('every level budget is large enough to ask every distinct question type at 
       `(${questionButtonIds.join(', ')}) at least once`);
   }
 });
+
+// The README documents Survivor's tuning in prose. Prose drifts from code
+// silently, so the numbers it states are asserted against the constants they
+// describe. If the tuning is retuned, this fails until the README catches up.
+test('the README describes the tuning the code actually ships', () => {
+  const readme = read('README.md');
+  const S = require('../games/survivor/survivor-logic.js');
+
+  assert.match(readme, new RegExp(`wave ${S.DOUBLE_ATTACK_WAVE}\\b`),
+    `README should say double-attacks start at wave ${S.DOUBLE_ATTACK_WAVE}`);
+  assert.match(readme, new RegExp(`wave ${S.FAKE_OUT_WAVE}\\b`),
+    `README should say fake-outs start at wave ${S.FAKE_OUT_WAVE}`);
+
+  assert.strictEqual(S.PARRY_TAIL_FRACTION, 1 / 3,
+    'README says a parry lands in the last third of the window; update both together');
+  assert.match(readme, /last third/i, 'README should describe the parry window');
+
+  assert.ok(S.PARRY_COMBO_GAIN === S.DODGE_COMBO_GAIN * 2,
+    'README says a parry pays double combo; update both together');
+  assert.match(readme, /double combo/i, 'README should state the parry combo bonus');
+
+  for (const control of ['Arrow keys', 'Swipe', 'Space', 'Tap']) {
+    assert.ok(readme.includes(control), `README should document the "${control}" control`);
+  }
+});
+
+// Every page that can make a sound must offer a way to silence it. The spec
+// requires the toggle in the hub AND each game, and it regressed once already
+// by simply never being built on the game pages.
+test('every page wires up a mute toggle', () => {
+  for (const page of PAGES) {
+    const html = read(page);
+    assert.match(html, /id="nk-mute-toggle"/, `${page} has no mute button`);
+  }
+  const wired = [
+    ['index.html', read('index.html')],
+    ['games/guardian/guardian.js', read('games/guardian/guardian.js')],
+    ['games/survivor/survivor.js', read('games/survivor/survivor.js')],
+  ];
+  for (const [name, src] of wired) {
+    assert.ok(src.includes('nk-mute-toggle'), `${name} never looks the mute button up`);
+    assert.ok(/setMuted/.test(src), `${name} never changes the mute state`);
+    assert.ok(/isMuted/.test(src), `${name} never reads the persisted mute state`);
+  }
+});
