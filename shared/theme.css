@@ -1,4 +1,4 @@
-/* Neon Keep — shared theme. Placeholder token values; Task A finalizes them. */
+/* Neon Keep — shared theme. */
 :root {
   --nk-bg: #0a0a12;
   --nk-bg-panel: #141424;
@@ -7,7 +7,7 @@
   --nk-danger: #ff3b3b;
   --nk-text: #e8e8f0;
   --nk-muted: #8a8aa0;
-  --nk-font-display: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --nk-font-display: "Courier New", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --nk-font-body: system-ui, -apple-system, sans-serif;
   --nk-radius: 10px;
   --nk-space: 12px;
@@ -20,7 +20,59 @@ body {
   font-family: var(--nk-font-body);
 }
 
-.nk-btn {}
-.nk-panel {}
-.nk-title {}
-.nk-crt {}
+.nk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--nk-space);
+  border-radius: var(--nk-radius);
+  border: 2px solid var(--nk-neon);
+  background: transparent;
+  color: var(--nk-neon);
+  font-family: var(--nk-font-display);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.nk-btn:hover,
+.nk-btn:focus-visible {
+  background: var(--nk-neon);
+  color: var(--nk-bg);
+  box-shadow: 0 0 6px var(--nk-neon), 0 0 18px var(--nk-neon);
+  outline: none;
+}
+
+.nk-btn:active {
+  box-shadow: 0 0 3px var(--nk-neon);
+}
+
+.nk-panel {
+  background: color-mix(in srgb, var(--nk-bg-panel) 85%, transparent);
+  border: 1px solid var(--nk-neon-2);
+  border-radius: var(--nk-radius);
+  padding: var(--nk-space);
+}
+
+.nk-title {
+  font-family: var(--nk-font-display);
+  font-size: clamp(1.75rem, 5vw, 3rem);
+  color: var(--nk-neon);
+  text-shadow: 0 0 6px var(--nk-neon), 0 0 18px var(--nk-neon-2);
+  margin: 0;
+}
+
+.nk-crt {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.04),
+    rgba(255, 255, 255, 0.04) 1px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0) 4px
+  );
+  z-index: 9999;
+}
