@@ -23,6 +23,7 @@
     guessForm: document.getElementById('guess-form'),
     guessInput: document.getElementById('guess-input'),
     btnRetry: document.getElementById('btn-retry'),
+    muteBtn: document.getElementById('nk-mute-toggle'),
   };
 
   var MOOD_EMOJI = {
@@ -57,6 +58,14 @@
     if (els.gargoyle) {
       els.gargoyle.dataset.mood = mood;
       els.gargoyle.textContent = MOOD_EMOJI[mood];
+    }
+  }
+
+  function renderMuteLabel() {
+    var muted = store && typeof store.isMuted === 'function' ? store.isMuted() : false;
+    if (els.muteBtn) {
+      els.muteBtn.textContent = muted ? '🔇 Sound' : '🔊 Sound';
+      els.muteBtn.setAttribute('aria-pressed', String(muted));
     }
   }
 
@@ -228,6 +237,15 @@
   if (els.guessForm) els.guessForm.addEventListener('submit', onSubmitGuess);
   if (els.btnRetry) els.btnRetry.addEventListener('click', onRetry);
 
+  if (els.muteBtn) {
+    els.muteBtn.addEventListener('click', function () {
+      if (audio && typeof audio.init === 'function') audio.init();
+      var next = !(store && typeof store.isMuted === 'function' ? store.isMuted() : false);
+      if (audio && typeof audio.setMuted === 'function') audio.setMuted(next);
+      renderMuteLabel();
+    });
+  }
+
   if (audio && typeof audio.init === 'function') {
     document.addEventListener('click', function initAudioOnce() {
       audio.init();
@@ -235,5 +253,6 @@
     }, { once: true });
   }
 
+  renderMuteLabel();
   loadLevel(0);
 })();

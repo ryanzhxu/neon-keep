@@ -23,6 +23,7 @@
   var overlayText = document.getElementById('survivor-overlay-text');
   var shareEl = document.getElementById('survivor-share');
   var startBtn = document.getElementById('survivor-start-btn');
+  var muteBtn = document.getElementById('nk-mute-toggle');
 
   // ---- state ----------------------------------------------------------
   var state = 'idle'; // 'idle' | 'playing' | 'dead'
@@ -41,6 +42,14 @@
 
   function now() {
     return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  }
+
+  function renderMuteLabel() {
+    var muted = store && typeof store.isMuted === 'function' ? store.isMuted() : false;
+    if (muteBtn) {
+      muteBtn.textContent = muted ? '🔇 Sound' : '🔊 Sound';
+      muteBtn.setAttribute('aria-pressed', String(muted));
+    }
   }
 
   // ---- run lifecycle ----------------------------------------------------
@@ -233,5 +242,15 @@
   document.addEventListener('visibilitychange', onVisibilityChange);
   window.addEventListener('resize', resizeCanvas);
 
+  if (muteBtn) {
+    muteBtn.addEventListener('click', function () {
+      if (audio && typeof audio.init === 'function') audio.init();
+      var next = !(store && typeof store.isMuted === 'function' ? store.isMuted() : false);
+      if (audio && typeof audio.setMuted === 'function') audio.setMuted(next);
+      renderMuteLabel();
+    });
+  }
+
+  renderMuteLabel();
   resizeCanvas();
 })();
