@@ -7,8 +7,12 @@ Play the live site: https://neon-keep.ryanxu.dev/
 
 ## Games
 
-- **Loophole Guardian** — Spot the loophole in each word before it slips past you.
-- **Reflex Survivor** — Survive as many waves as you can against a rising threat.
+- **Loophole Guardian** — A snarky gargoyle guards a vault. You may not ask for
+  the password, only oblique questions: does it contain this letter, what
+  rhymes with it, how long is it. Spend your question budget, then guess.
+- **Reflex Survivor** — One hit point. Attacks telegraph from a direction and
+  the timing window shrinks every wave. Dodge the wrong way once and the run
+  is over.
 
 ## How to play
 
