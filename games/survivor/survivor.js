@@ -13,6 +13,9 @@
   var HIGH_WAVE_KEY = 'survivor.highWave';
   var SWIPE_THRESHOLD = 24; // px
   var HIT_STOP_MS = 200;
+  var DEATH_SLOWMO_MS = 450;
+  var DOUBLE_ATTACK_CHANCE = 0.35; // once double-attacks are unlocked
+  var FAKE_OUT_CHANCE = 0.3;       // once fake-outs are unlocked
 
   var canvas = document.getElementById('survivor-canvas');
   var ctx = canvas.getContext('2d');
@@ -29,7 +32,8 @@
   var state = 'idle'; // 'idle' | 'playing' | 'dead'
   var wave = 0;
   var combo = 0;
-  var attackDir = null;
+  var attackDirs = [];    // 1 direction normally, 2 on a double-attack round
+  var isFakeOut = false;  // true when the telegraphed direction is a feint
   var roundStart = 0;   // now() timestamp the current round began
   var roundWindow = 0;  // ms budget for the current round
   var resolved = false; // whether the current round has already been judged
@@ -55,6 +59,13 @@
   // ---- run lifecycle ----------------------------------------------------
   function startRun() {
     if (audio && audio.init) audio.init();
+    // A run always starts from a click on startBtn (or restart), and the
+    // mute toggle can also hold focus. Either one holding focus would let a
+    // later Space press activate the button instead of parrying, so drop
+    // focus from both before play begins.
+    if (startBtn && startBtn.blur) startBtn.blur();
+    if (muteBtn && muteBtn.blur) muteBtn.blur();
+    canvas.classList.remove('survivor-slowmo');
     state = 'playing';
     wave = 1;
     combo = 0;
@@ -67,7 +78,22 @@
 
   function startNewRound() {
     var dirs = logic.DIRS;
-    attackDir = dirs[Math.floor(Math.random() * dirs.length)];
+    var primary = dirs[Math.floor(Math.random() * dirs.length)];
+    var roll = Math.random();
+
+    if (logic.hasDoubleAttack(wave) && roll < DOUBLE_ATTACK_CHANCE) {
+      var second = primary;
+      while (second === primary) second = dirs[Math.floor(Math.random() * dirs.length)];
+      attackDirs = [primary, second];
+      isFakeOut = false;
+    } else if (logic.hasFakeOut(wave) && roll < DOUBLE_ATTACK_CHANCE + FAKE_OUT_CHANCE) {
+      attackDirs = [primary];
+      isFakeOut = true;
+    } else {
+      attackDirs = [primary];
+      isFakeOut = false;
+    }
+
     roundWindow = logic.windowMs(wave);
     roundStart = now();
     resolved = false;
@@ -86,19 +112,39 @@
     }
   }
 
-  function resolveRound(inputDir) {
+  // resolveRound(inputDir, isParry) — judges a dodge (isParry falsy, the
+  // original path, unchanged) or a parry (isParry true — attemptParry always
+  // passes an input direction already known to be safe, so only the combo
+  // reward differs).
+  function resolveRound(inputDir, isParry) {
     if (resolved || state !== 'playing') return;
     resolved = true;
-    var safe = logic.safeDir(attackDir);
-    if (inputDir !== null && inputDir === safe) {
+    var success = logic.isSafeDodge(attackDirs, isFakeOut, inputDir);
+    if (success) {
       if (audio) audio.play('dodge');
-      combo++;
+      combo += logic.comboGain(isParry ? 'parry' : 'dodge');
       wave++;
       waveEl.textContent = wave;
-      if (juice) juice.flash('#00f0ff', 120);
+      if (juice) juice.flash(isParry ? '#ffe700' : '#00f0ff', 120);
       startNewRound();
     } else {
       handleHit();
+    }
+  }
+
+  // attemptParry() — the Space/tap path. Timing decides success, not
+  // direction: on a good parry any attack direction is accepted, so this
+  // feeds resolveRound a direction already known to be safe for the current
+  // round. An early or late press resolves exactly like a wrong dodge.
+  function attemptParry() {
+    if (resolved || state !== 'playing') return;
+    var elapsed = now() - roundStart;
+    var result = logic.parryResult(elapsed, roundWindow);
+    if (result === 'success') {
+      var safe = logic.roundSafeDirs(attackDirs, isFakeOut)[0];
+      resolveRound(safe, true);
+    } else {
+      resolveRound(null);
     }
   }
 
@@ -111,7 +157,17 @@
     if (audio) audio.play('hit');
     if (juice && juice.shake) juice.shake(canvas, 8, 300);
     var stop = (juice && juice.hitStop) ? juice.hitStop(HIT_STOP_MS) : Promise.resolve();
-    stop.then(onDeath);
+    stop.then(playDeathSlowMo).then(onDeath);
+  }
+
+  // playDeathSlowMo() — a brief, self-terminating visual beat between the
+  // hit-stop freeze and the death screen. Pure CSS transition on the frozen
+  // canvas, so it needs no animation frame of its own and cannot leak one.
+  function playDeathSlowMo() {
+    canvas.classList.add('survivor-slowmo');
+    return new Promise(function (resolve) {
+      setTimeout(resolve, DEATH_SLOWMO_MS);
+    });
   }
 
   function onDeath() {
@@ -153,19 +209,24 @@
     ctx.arc(cx, cy, Math.min(w, h) * 0.05, 0, Math.PI * 2);
     ctx.fill();
 
-    if (state === 'playing' && attackDir) {
+    if (state === 'playing' && attackDirs.length) {
       var size = Math.min(w, h) * 0.12;
       var pad = Math.min(w, h) * 0.08;
-      ctx.fillStyle = '#ff3b3b';
-      if (attackDir === 'left') ctx.fillRect(pad, cy - size / 2, size, size);
-      else if (attackDir === 'right') ctx.fillRect(w - pad - size, cy - size / 2, size, size);
-      else if (attackDir === 'up') ctx.fillRect(cx - size / 2, pad, size, size);
-      else if (attackDir === 'down') ctx.fillRect(cx - size / 2, h - pad - size, size, size);
+      ctx.fillStyle = isFakeOut ? '#ffb020' : '#ff3b3b';
+      for (var i = 0; i < attackDirs.length; i++) {
+        var d = attackDirs[i];
+        if (d === 'left') ctx.fillRect(pad, cy - size / 2, size, size);
+        else if (d === 'right') ctx.fillRect(w - pad - size, cy - size / 2, size, size);
+        else if (d === 'up') ctx.fillRect(cx - size / 2, pad, size, size);
+        else if (d === 'down') ctx.fillRect(cx - size / 2, h - pad - size, size, size);
+      }
 
       var elapsed = now() - roundStart;
       var remaining = Math.max(0, roundWindow - elapsed);
       var pct = roundWindow > 0 ? remaining / roundWindow : 0;
-      ctx.fillStyle = '#ff2fd0';
+      var tailStart = roundWindow * (1 - logic.PARRY_TAIL_FRACTION);
+      var inParryTail = elapsed >= tailStart && elapsed < roundWindow;
+      ctx.fillStyle = inParryTail ? '#ffe700' : '#ff2fd0';
       ctx.fillRect(0, h - Math.max(4, h * 0.02), w * pct, Math.max(4, h * 0.02));
     }
   }
@@ -179,8 +240,22 @@
   };
 
   function onKeyDown(e) {
+    if (state !== 'playing') return;
+    if (e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space') {
+      // Both game pages have a #nk-mute-toggle button, and Space activates
+      // whichever button currently holds focus instead of reaching this
+      // handler's default action. startRun() already blurs it, but as a
+      // second guard: if focus somehow still sits on any button, let the
+      // browser's native Space-activates-button behavior happen instead of
+      // stealing the key for a parry.
+      var active = document.activeElement;
+      if (active && active.tagName === 'BUTTON') return;
+      e.preventDefault();
+      attemptParry();
+      return;
+    }
     var dir = KEY_TO_DIR[e.key];
-    if (!dir || state !== 'playing') return;
+    if (!dir) return;
     e.preventDefault();
     resolveRound(dir);
   }
@@ -203,7 +278,10 @@
     if (!t) return;
     var dx = t.clientX - touchStartX;
     var dy = t.clientY - touchStartY;
-    if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) return;
+    if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
+      attemptParry();
+      return;
+    }
     var dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
     resolveRound(dir);
   }
