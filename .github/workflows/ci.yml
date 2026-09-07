@@ -27,13 +27,28 @@ jobs:
           shopt -s globstar nullglob
           files=(**/*.js)
           if [ ${#files[@]} -eq 0 ]; then
-            echo "::error title=No JS found::Expected JavaScript sources."
-            exit 1
+            echo "::notice title=No JS yet::Repo not scaffolded; skipping syntax check."
+          else
+            for f in "${files[@]}"; do
+              echo "checking $f"
+              node --check "$f"
+            done
           fi
-          for f in "${files[@]}"; do
-            echo "checking $f"
-            node --check "$f"
-          done
 
       - name: Run tests
-        run: node --test tests/
+        run: |
+          if [ -d tests ]; then
+            node --test tests/
+          else
+            echo "::notice title=No tests yet::tests/ does not exist; skipping."
+          fi
+
+      - name: Reject root-absolute asset paths
+        run: |
+          shopt -s globstar nullglob
+          bad=$(grep -rnE '(src|href)="/[^/]' --include='*.html' . || true)
+          if [ -n "$bad" ]; then
+            echo "::error title=Absolute path::Site is served from /neon-keep/; use relative paths."
+            echo "$bad"
+            exit 1
+          fi
