@@ -5,14 +5,122 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Neon Keep</title>
   <link rel="stylesheet" href="shared/theme.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+      padding: calc(var(--nk-space) * 3) var(--nk-space);
+      text-align: center;
+    }
+    .nk-tagline {
+      color: var(--nk-muted);
+      font-family: var(--nk-font-body);
+      margin: var(--nk-space) 0 calc(var(--nk-space) * 3);
+    }
+    .nk-tiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: calc(var(--nk-space) * 1.5);
+      width: 100%;
+      max-width: 700px;
+    }
+    .nk-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: calc(var(--nk-space) / 2);
+      text-decoration: none;
+      color: var(--nk-text);
+      padding: calc(var(--nk-space) * 2) var(--nk-space);
+    }
+    .nk-tile:hover,
+    .nk-tile:focus-visible {
+      box-shadow: 0 0 6px var(--nk-neon-2), 0 0 18px var(--nk-neon-2);
+      outline: none;
+    }
+    .nk-tile-emoji {
+      font-size: 2.5rem;
+      line-height: 1;
+    }
+    .nk-tile-name {
+      font-family: var(--nk-font-display);
+      color: var(--nk-neon-2);
+      font-size: 1.1rem;
+    }
+    .nk-tile-score {
+      color: var(--nk-muted);
+      font-size: 0.85rem;
+    }
+    #nk-mute-toggle {
+      margin-top: calc(var(--nk-space) * 3);
+    }
+  </style>
 </head>
 <body>
   <div class="nk-crt" aria-hidden="true"></div>
-  <main>
+  <header>
     <h1 class="nk-title">Neon Keep</h1>
+    <p class="nk-tagline">Two arcade challenges. No install. No mercy.</p>
+  </header>
+  <main class="nk-tiles">
+    <a class="nk-panel nk-tile" href="games/guardian/index.html">
+      <span class="nk-tile-emoji" aria-hidden="true">🏰</span>
+      <span class="nk-tile-name">Loophole Guardian</span>
+      <span class="nk-tile-score" id="nk-guardian-score">Levels cleared: 0</span>
+    </a>
+    <a class="nk-panel nk-tile" href="games/survivor/index.html">
+      <span class="nk-tile-emoji" aria-hidden="true">💀</span>
+      <span class="nk-tile-name">Reflex Survivor</span>
+      <span class="nk-tile-score" id="nk-survivor-score">Best wave: 0</span>
+    </a>
   </main>
+  <button class="nk-btn" id="nk-mute-toggle" type="button" aria-pressed="false">🔊 Sound</button>
+
   <script src="shared/store.js"></script>
   <script src="shared/audio.js"></script>
   <script src="shared/juice.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      var guardianScoreEl = document.getElementById('nk-guardian-score');
+      var survivorScoreEl = document.getElementById('nk-survivor-score');
+      var muteBtn = document.getElementById('nk-mute-toggle');
+      var tiles = document.querySelectorAll('.nk-tile');
+
+      function renderScores() {
+        var levelsCleared = NK.store.get('guardian.levelsCleared', 0);
+        var highWave = NK.store.get('survivor.highWave', 0);
+        guardianScoreEl.textContent = 'Levels cleared: ' + levelsCleared;
+        survivorScoreEl.textContent = 'Best wave: ' + highWave;
+      }
+
+      function renderMuteLabel() {
+        var muted = NK.store.isMuted();
+        muteBtn.textContent = muted ? '🔇 Sound' : '🔊 Sound';
+        muteBtn.setAttribute('aria-pressed', String(muted));
+      }
+
+      for (var i = 0; i < tiles.length; i++) {
+        tiles[i].addEventListener('click', function () {
+          NK.audio.init();
+          NK.audio.play('click');
+        });
+      }
+
+      muteBtn.addEventListener('click', function () {
+        NK.audio.init();
+        var next = !NK.store.isMuted();
+        NK.audio.setMuted(next);
+        renderMuteLabel();
+      });
+
+      renderScores();
+      renderMuteLabel();
+    })();
+  </script>
 </body>
 </html>
