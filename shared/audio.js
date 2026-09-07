@@ -24,6 +24,30 @@ window.NK.audio = (function () {
     setMuted(!isMuted());
   }
 
+  // renderMuteButton(el) — sets a mute-toggle button's label and aria-pressed
+  // from the current persisted mute state. Shared by bindMuteButton below and
+  // by the click handler it attaches, so the label/emoji/aria logic lives in
+  // exactly one place instead of once per page.
+  function renderMuteButton(el) {
+    var muted = isMuted();
+    el.textContent = muted ? '🔇 Sound' : '🔊 Sound';
+    el.setAttribute('aria-pressed', String(muted));
+  }
+
+  // bindMuteButton(el) — wires up a mute-toggle button: renders its label and
+  // aria-pressed from the persisted state immediately, then on click calls
+  // init(), flips the mute state via setMuted(), and re-renders. Tolerates a
+  // null/missing element (a page with no such button keeps working).
+  function bindMuteButton(el) {
+    if (!el) return;
+    renderMuteButton(el);
+    el.addEventListener('click', function () {
+      init();
+      setMuted(!isMuted());
+      renderMuteButton(el);
+    });
+  }
+
   // Schedules one oscillator "note": a tone from startFreq to endFreq over
   // durationSec, with a short attack/decay gain envelope.
   function tone(startTime, durationSec, startFreq, endFreq, type, peakGain) {
@@ -107,5 +131,5 @@ window.NK.audio = (function () {
     fn(ctx.currentTime, intensity);
   }
 
-  return { init, play, isMuted, setMuted, toggleMuted };
+  return { init, play, isMuted, setMuted, toggleMuted, bindMuteButton };
 })();

@@ -98,12 +98,6 @@
         survivorScoreEl.textContent = 'Best wave: ' + highWave;
       }
 
-      function renderMuteLabel() {
-        var muted = NK.store.isMuted();
-        muteBtn.textContent = muted ? '🔇 Sound' : '🔊 Sound';
-        muteBtn.setAttribute('aria-pressed', String(muted));
-      }
-
       // Fire on pointerdown, not click: a tile navigates away in the same
       // gesture, and on click the blip races document unload and is usually
       // cut off. pointerdown lands earlier and adds no latency.
@@ -114,15 +108,11 @@
         });
       }
 
-      muteBtn.addEventListener('click', function () {
-        NK.audio.init();
-        var next = !NK.store.isMuted();
-        NK.audio.setMuted(next);
-        renderMuteLabel();
-      });
+      // NK.audio.bindMuteButton renders the label from the persisted
+      // isMuted() state and calls setMuted() on click; see shared/audio.js.
+      NK.audio.bindMuteButton(muteBtn);
 
       renderScores();
-      renderMuteLabel();
     })();
   </script>
 </body>

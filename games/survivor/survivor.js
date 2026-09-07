@@ -132,14 +132,6 @@
     return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   }
 
-  function renderMuteLabel() {
-    var muted = store && typeof store.isMuted === 'function' ? store.isMuted() : false;
-    if (muteBtn) {
-      muteBtn.textContent = muted ? '🔇 Sound' : '🔊 Sound';
-      muteBtn.setAttribute('aria-pressed', String(muted));
-    }
-  }
-
   // ---- run lifecycle ----------------------------------------------------
   function startRun() {
     if (audio && audio.init) audio.init();
@@ -438,15 +430,9 @@
   document.addEventListener('visibilitychange', onVisibilityChange);
   window.addEventListener('resize', resizeCanvas);
 
-  if (muteBtn) {
-    muteBtn.addEventListener('click', function () {
-      if (audio && typeof audio.init === 'function') audio.init();
-      var next = !(store && typeof store.isMuted === 'function' ? store.isMuted() : false);
-      if (audio && typeof audio.setMuted === 'function') audio.setMuted(next);
-      renderMuteLabel();
-    });
-  }
+  // NK.audio.bindMuteButton renders the label from the persisted isMuted()
+  // state and calls setMuted() on click; see shared/audio.js.
+  if (audio && typeof audio.bindMuteButton === 'function') audio.bindMuteButton(muteBtn);
 
-  renderMuteLabel();
   resizeCanvas();
 })();
