@@ -38,23 +38,29 @@ def render():
             st.write(entry)
 
     # Action input
-    action = st.text_input("Your next move:")
-    if st.button("Take Action") and action.strip():
-        result = engine.process_turn(action)
-        alive = result.get("alive", False)
-        story = result.get("story", "")
-        st.session_state.dungeon_alive = alive
-        st.session_state.dungeon_logs.append(story)
+    if alive and turn <= 5:
+        action = st.text_input("Your next move:")
+        if st.button("Take Action") and action.strip():
+            result = engine.process_turn(action)
+            alive = result.get("alive", False)
+            story = result.get("story", "")
+            st.session_state.dungeon_alive = alive
+            st.session_state.dungeon_logs.append(story)
 
-        # Increment turn only if still alive or after processing
-        st.session_state.dungeon_turn += 1
+            # Increment turn only if still alive or after processing
+            st.session_state.dungeon_turn += 1
 
-        # Victory check
-        if not alive:
-            st.error("☠️ GAME OVER! You died.")
-        elif st.session_state.dungeon_turn > 5 and alive:
-            st.snow()
-            st.success("🏆 YOU SURVIVED THE DUNGEON!")
+            # Victory check
+            if not alive:
+                st.error("☠️ GAME OVER! You died.")
+            elif st.session_state.dungeon_turn > 5 and alive:
+                st.snow()
+                st.success("🏆 YOU SURVIVED THE DUNGEON!")
+    elif not alive:
+        st.error("☠️ GAME OVER! You died.")
+    else:
+        st.snow()
+        st.success("🏆 YOU SURVIVED THE DUNGEON!")
 
     # New run button
     if st.button("New Run"):
