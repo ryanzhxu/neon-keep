@@ -80,15 +80,31 @@ window.NK.audio = (function () {
       tone(t + 0.08, 0.08, 523.25, 523.25, 'square', 0.15);
       tone(t + 0.16, 0.14, 659.25, 659.25, 'square', 0.15);
     },
+    // Ambient heartbeat tick for Reflex Survivor's "rising audio tempo with
+    // intensity" juice. `intensity` (0..1, from NK.survivorLogic.audioIntensity)
+    // is optional and only read here — every other sound above ignores the
+    // second argument entirely, so play(name) with one argument is unchanged
+    // for every existing caller (Guardian, the hub, and Survivor's own
+    // dodge/hit/lose calls).
+    tick: (t, intensity) => {
+      const i = typeof intensity === 'number' && Number.isFinite(intensity)
+        ? Math.max(0, Math.min(1, intensity))
+        : 0;
+      const freq = 220 + i * 460;
+      tone(t, 0.045, freq, freq, 'square', 0.04 + i * 0.05);
+    },
   };
 
-  function play(name) {
+  // play(name, intensity) — intensity is optional and currently only used by
+  // the 'tick' sound above; play(name) with a single argument behaves exactly
+  // as before for every other sound name.
+  function play(name, intensity) {
     if (isMuted()) return;
     if (!ctx) return;
     const fn = SOUNDS[name];
     if (!fn) return;
     if (ctx.state === 'suspended') ctx.resume();
-    fn(ctx.currentTime);
+    fn(ctx.currentTime, intensity);
   }
 
   return { init, play, isMuted, setMuted, toggleMuted };
