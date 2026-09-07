@@ -104,8 +104,11 @@
         muteBtn.setAttribute('aria-pressed', String(muted));
       }
 
+      // Fire on pointerdown, not click: a tile navigates away in the same
+      // gesture, and on click the blip races document unload and is usually
+      // cut off. pointerdown lands earlier and adds no latency.
       for (var i = 0; i < tiles.length; i++) {
-        tiles[i].addEventListener('click', function () {
+        tiles[i].addEventListener('pointerdown', function () {
           NK.audio.init();
           NK.audio.play('click');
         });
