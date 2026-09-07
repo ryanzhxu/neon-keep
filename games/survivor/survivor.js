@@ -17,6 +17,90 @@
   var DOUBLE_ATTACK_CHANCE = 0.35; // once double-attacks are unlocked
   var FAKE_OUT_CHANCE = 0.3;       // once fake-outs are unlocked
 
+  // ---- particle burst (juice) ------------------------------------------
+  // A small fixed-size pool, reused in place every frame: no per-frame
+  // allocation, no unbounded growth. logic.updateParticle/particleAlive/
+  // particleAlpha (pure, unit-tested) own the per-particle math; this file
+  // only owns spawning (random) and canvas rendering (needs ctx).
+  var PARTICLE_POOL_SIZE = 40;
+  var PARTICLE_LIFE_MS = 380;
+  var PARTICLE_SPEED_MIN = 0.15; // canvas px per ms
+  var PARTICLE_SPEED_MAX = 0.42;
+  var BURST_COUNT_DODGE = 10;
+  var BURST_COUNT_DEATH = 26; // heavier burst on the killing hit
+  var PARTICLE_COLOR_DODGE = '#00f0ff';
+  var PARTICLE_COLOR_PARRY = '#ffe700';
+  var PARTICLE_COLOR_DEATH = '#ff3b3b';
+  // The killing-hit burst is rendered once, frozen for the hit-stop/slow-mo
+  // beat (the main loop stops before another frame would draw). Pre-advance
+  // it by this many virtual ms so that single frozen frame already shows the
+  // particles mid-scatter instead of a single point.
+  var DEATH_BURST_PRESPAWN_MS = 90;
+
+  var particles = [];
+  for (var pPoolIdx = 0; pPoolIdx < PARTICLE_POOL_SIZE; pPoolIdx++) {
+    particles.push({ x: 0, y: 0, vx: 0, vy: 0, ageMs: 0, lifeMs: 0, color: PARTICLE_COLOR_DODGE, size: 2 });
+  }
+  var lastParticleFrameAt = 0; // now() at the last particle update, for per-frame dt
+
+  // spawnBurst(cx, cy, count, color) — (re)activates up to `count` dead pool
+  // slots as a radial burst from (cx, cy). Reuses slots only: the pool never
+  // grows, so a burst while the pool is saturated just spawns fewer
+  // particles instead of allocating more.
+  function spawnBurst(cx, cy, count, color) {
+    var spawned = 0;
+    for (var i = 0; i < particles.length && spawned < count; i++) {
+      var p = particles[i];
+      if (logic.particleAlive(p)) continue;
+      var angle = Math.random() * Math.PI * 2;
+      var speed = PARTICLE_SPEED_MIN + Math.random() * (PARTICLE_SPEED_MAX - PARTICLE_SPEED_MIN);
+      p.x = cx;
+      p.y = cy;
+      p.vx = Math.cos(angle) * speed;
+      p.vy = Math.sin(angle) * speed;
+      p.ageMs = 0;
+      p.lifeMs = PARTICLE_LIFE_MS;
+      p.color = color;
+      p.size = 2 + Math.random() * 2;
+      spawned++;
+    }
+  }
+
+  // updateParticles(dtMs) — advances every live pool slot via the pure
+  // logic.updateParticle step. Mutates in place; never allocates.
+  function updateParticles(dtMs) {
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      if (!logic.particleAlive(p)) continue;
+      logic.updateParticle(p, dtMs);
+    }
+  }
+
+  function drawParticles() {
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      if (!logic.particleAlive(p)) continue;
+      var alpha = logic.particleAlpha(p);
+      if (alpha <= 0) continue;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---- rising audio tempo with intensity --------------------------------
+  // An ambient tick plays on an interval that shortens as logic.audioIntensity
+  // rises with wave/window decay (spec: "rising audio tempo with intensity").
+  // Ticks only advance from inside loop(), which already only runs while
+  // state === 'playing' and is paused/cancelled exactly like everything
+  // else driven by rafId, so this needs no pause handling of its own beyond
+  // the elapsed-time bookkeeping mirrored from the round timer below.
+  var lastTickAt = 0;      // now() timestamp of the last ambient tick
+  var pausedTickElapsed = 0; // ms already elapsed toward the next tick when paused
+
   var canvas = document.getElementById('survivor-canvas');
   var ctx = canvas.getContext('2d');
   var hpEl = document.getElementById('survivor-hp');
@@ -72,6 +156,8 @@
     paused = false;
     waveEl.textContent = wave;
     overlay.hidden = true;
+    lastTickAt = now();
+    pausedTickElapsed = 0;
     startNewRound();
     if (rafId === null) rafId = requestAnimationFrame(loop);
   }
@@ -103,6 +189,7 @@
     rafId = null;
     if (state !== 'playing') return;
     draw();
+    tickAmbientTempo();
     var elapsed = now() - roundStart;
     if (!resolved && elapsed >= roundWindow) {
       resolveRound(null); // timeout
@@ -110,6 +197,19 @@
     if (state === 'playing') {
       rafId = requestAnimationFrame(loop);
     }
+  }
+
+  // tickAmbientTempo() — plays the ambient tempo tick (rising audio tempo
+  // with intensity) at an interval that shortens as logic.audioIntensity
+  // rises with the wave/window ramp. Only called from loop(), so it only
+  // ever runs while state === 'playing' and is naturally paused/resumed
+  // alongside everything else driven by rafId.
+  function tickAmbientTempo() {
+    var interval = logic.tickIntervalMs(logic.audioIntensity(wave));
+    var t = now();
+    if (t - lastTickAt < interval) return;
+    lastTickAt = t;
+    if (audio) audio.play('tick', logic.audioIntensity(wave));
   }
 
   // resolveRound(inputDir, isParry) — judges a dodge (isParry falsy, the
@@ -126,6 +226,8 @@
       wave++;
       waveEl.textContent = wave;
       if (juice) juice.flash(isParry ? '#ffe700' : '#00f0ff', 120);
+      spawnBurst(canvas.width / 2, canvas.height / 2, BURST_COUNT_DODGE,
+        isParry ? PARTICLE_COLOR_PARRY : PARTICLE_COLOR_DODGE);
       startNewRound();
     } else {
       handleHit();
@@ -155,6 +257,13 @@
       rafId = null;
     }
     if (audio) audio.play('hit');
+    // The loop stops right here, so this burst gets exactly one frame to
+    // render before the canvas freezes for the hit-stop/slow-mo beat.
+    // Pre-advance it a bit so that frozen frame already reads as an
+    // explosion in progress instead of a single point at the hero.
+    spawnBurst(canvas.width / 2, canvas.height / 2, BURST_COUNT_DEATH, PARTICLE_COLOR_DEATH);
+    updateParticles(DEATH_BURST_PRESPAWN_MS);
+    draw();
     if (juice && juice.shake) juice.shake(canvas, 8, 300);
     var stop = (juice && juice.hitStop) ? juice.hitStop(HIT_STOP_MS) : Promise.resolve();
     stop.then(playDeathSlowMo).then(onDeath);
@@ -199,6 +308,11 @@
 
   function draw() {
     var w = canvas.width, h = canvas.height;
+    var t = now();
+    var particleDt = lastParticleFrameAt ? (t - lastParticleFrameAt) : 0;
+    lastParticleFrameAt = t;
+    updateParticles(particleDt);
+
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#141424';
     ctx.fillRect(0, 0, w, h);
@@ -229,6 +343,8 @@
       ctx.fillStyle = inParryTail ? '#ffe700' : '#ff2fd0';
       ctx.fillRect(0, h - Math.max(4, h * 0.02), w * pct, Math.max(4, h * 0.02));
     }
+
+    drawParticles();
   }
 
   // ---- input --------------------------------------------------------------
@@ -299,6 +415,7 @@
     if (state !== 'playing' || paused) return;
     paused = true;
     pausedElapsed = now() - roundStart;
+    pausedTickElapsed = now() - lastTickAt;
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
       rafId = null;
@@ -309,6 +426,7 @@
     if (state !== 'playing' || !paused) return;
     paused = false;
     roundStart = now() - pausedElapsed;
+    lastTickAt = now() - pausedTickElapsed;
     if (rafId === null) rafId = requestAnimationFrame(loop);
   }
 

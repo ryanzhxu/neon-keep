@@ -179,3 +179,163 @@ test('isSafeDodge rejects a null or unmatched input', () => {
   assert.strictEqual(S.isSafeDodge(['left'], false, null), false);
   assert.strictEqual(S.isSafeDodge(['left'], false, 'sideways'), false);
 });
+
+// ---- roundSafeDirs input guard (regression) --------------------------------
+// attackDirs must be an array. A bare string has `.length > 1` (e.g.
+// 'left'.length === 4), so without a guard it silently falls through to the
+// double-attack branch and returns a plausible-looking but wrong answer
+// instead of failing loudly. See the CONTRACT: a single string must be read
+// as one direction, matching the equivalent one-element array exactly.
+
+test('roundSafeDirs treats a bare string attackDirs as a single direction, not a double-attack', () => {
+  const fromArray = S.roundSafeDirs(['left'], false);
+  assert.deepStrictEqual(fromArray, ['right']);
+  const fromString = S.roundSafeDirs('left', false);
+  assert.deepStrictEqual(fromString, ['right'],
+    'a bare string must be coerced to a single direction, not fall through to the double-attack branch');
+});
+
+test('isSafeDodge never succeeds when attackDirs is a malformed non-array, non-string value', () => {
+  assert.doesNotThrow(() => S.isSafeDodge(42, false, 'left'));
+  for (const d of S.DIRS) {
+    assert.strictEqual(S.isSafeDodge(42, false, d), false);
+    assert.strictEqual(S.isSafeDodge({}, false, d), false);
+  }
+});
+
+// roundSafeDirs must fail CLOSED when there is no valid attack direction at
+// all: an empty array, or anything the guard above normalizes down to one
+// (null, undefined, a non-string non-array, an empty string). "No attack"
+// means "no round", so nothing should read as a successful dodge — the
+// previous guard normalized `dirs` to `[]` correctly but then still fell
+// into the single-direction branch, where `dirs[0]` is `undefined` and the
+// function returned `[undefined]` (a one-element array holding a junk
+// value) instead of `[]`. That is itself a silent-wrong-answer shape: a
+// caller doing `.length` or `.includes(x)` on the result gets a lie, even
+// though isSafeDodge happens to still reject it today via its own null
+// check on inputDir.
+test('roundSafeDirs returns an empty list (fails closed), never [undefined], when there is no valid attack', () => {
+  const noAttackInputs = [[], null, undefined, 42, ''];
+  for (const bad of noAttackInputs) {
+    assert.deepStrictEqual(S.roundSafeDirs(bad, false), [],
+      `roundSafeDirs(${JSON.stringify(bad)}, false) must be [], not a list containing undefined`);
+  }
+});
+
+test('isSafeDodge rejects every direction when there is no valid attack to dodge', () => {
+  const noAttackInputs = [[], null, undefined, 42, ''];
+  for (const bad of noAttackInputs) {
+    for (const d of S.DIRS) {
+      assert.strictEqual(S.isSafeDodge(bad, false, d), false,
+        `isSafeDodge(${JSON.stringify(bad)}, false, '${d}') must be false — no attack means no safe direction`);
+    }
+  }
+});
+
+// ---- particle burst (juice) -----------------------------------------------
+// Pure per-particle math factored out of the canvas pool so it is testable
+// without a browser. See survivor.js for how the fixed-size pool uses these.
+
+test('updateParticle advances position by velocity * dt and ages the particle', () => {
+  const p = { x: 10, y: 20, vx: 2, vy: -1, ageMs: 0, lifeMs: 100 };
+  const result = S.updateParticle(p, 50);
+  assert.strictEqual(result, p, 'mutates and returns the same object (no allocation)');
+  assert.strictEqual(p.x, 110);
+  assert.strictEqual(p.y, -30);
+  assert.strictEqual(p.ageMs, 50);
+});
+
+test('updateParticle treats a missing, non-finite, or negative dt as zero movement', () => {
+  const base = { x: 5, y: 5, vx: 3, vy: 3, ageMs: 0, lifeMs: 100 };
+  for (const badDt of [undefined, NaN, -10]) {
+    const p = { ...base };
+    S.updateParticle(p, badDt);
+    assert.strictEqual(p.x, 5, `dt=${badDt} must not move x`);
+    assert.strictEqual(p.y, 5, `dt=${badDt} must not move y`);
+    assert.strictEqual(p.ageMs, 0, `dt=${badDt} must not age the particle`);
+  }
+});
+
+test('updateParticle on a null/undefined particle is a safe no-op', () => {
+  assert.strictEqual(S.updateParticle(null, 16), null);
+  assert.strictEqual(S.updateParticle(undefined, 16), undefined);
+});
+
+test('particleAlive is true only strictly within lifeMs and only for a spawned particle', () => {
+  assert.strictEqual(S.particleAlive({ ageMs: 0, lifeMs: 100 }), true);
+  assert.strictEqual(S.particleAlive({ ageMs: 99, lifeMs: 100 }), true);
+  assert.strictEqual(S.particleAlive({ ageMs: 100, lifeMs: 100 }), false, 'age reaching lifeMs is dead');
+  assert.strictEqual(S.particleAlive({ ageMs: 0, lifeMs: 0 }), false, 'an unspawned slot (lifeMs 0) is never alive');
+  assert.strictEqual(S.particleAlive(null), false);
+  assert.strictEqual(S.particleAlive(undefined), false);
+});
+
+test('particleAlpha starts at 1 and fades linearly to 0 over the lifetime', () => {
+  assert.strictEqual(S.particleAlpha({ ageMs: 0, lifeMs: 100 }), 1);
+  assert.strictEqual(S.particleAlpha({ ageMs: 50, lifeMs: 100 }), 0.5);
+  assert.strictEqual(S.particleAlpha({ ageMs: 100, lifeMs: 100 }), 0, 'dead particle has no opacity');
+  assert.strictEqual(S.particleAlpha(null), 0);
+});
+
+test('particleAlpha is monotonically non-increasing across a particle lifetime', () => {
+  const lifeMs = 200;
+  let prev = S.particleAlpha({ ageMs: 0, lifeMs });
+  for (let age = 1; age < lifeMs; age++) {
+    const cur = S.particleAlpha({ ageMs: age, lifeMs });
+    assert.ok(cur <= prev, `alpha at age ${age} should be <= alpha at age ${age - 1}`);
+    prev = cur;
+  }
+});
+
+// ---- rising audio tempo with intensity -------------------------------------
+// audioIntensity/tickIntervalMs decide how urgent the ambient tick sounds as
+// waves climb and windowMs shrinks (spec: "rising audio tempo with
+// intensity"). survivor.js just calls these from the existing loop.
+
+test('audioIntensity is 0 at wave 1 (the calmest wave) and rises toward 1', () => {
+  assert.strictEqual(S.audioIntensity(1), 0);
+  assert.ok(S.audioIntensity(50) > S.audioIntensity(1));
+});
+
+test('audioIntensity stays within [0, 1] across a wide range of waves', () => {
+  for (const wave of [0, 1, 2, 5, 10, 50, 200, 10000, -5, 4.5]) {
+    const i = S.audioIntensity(wave);
+    assert.ok(Number.isFinite(i), `audioIntensity(${wave}) must be finite`);
+    assert.ok(i >= 0 && i <= 1, `audioIntensity(${wave})=${i} must be within [0, 1]`);
+  }
+});
+
+test('audioIntensity is monotonically non-decreasing as wave rises, mirroring windowMs', () => {
+  let prev = S.audioIntensity(1);
+  for (let wave = 2; wave <= 100; wave++) {
+    const cur = S.audioIntensity(wave);
+    assert.ok(cur >= prev, `audioIntensity(${wave})=${cur} should be >= audioIntensity(${wave - 1})=${prev}`);
+    prev = cur;
+  }
+});
+
+test('audioIntensity reaches exactly 1 once windowMs bottoms out at the floor', () => {
+  assert.strictEqual(S.audioIntensity(1000), 1);
+});
+
+test('tickIntervalMs interpolates from the slow tempo at intensity 0 to the fast tempo at intensity 1', () => {
+  assert.strictEqual(S.tickIntervalMs(0), S.TICK_INTERVAL_SLOW_MS);
+  assert.strictEqual(S.tickIntervalMs(1), S.TICK_INTERVAL_FAST_MS);
+  assert.ok(S.TICK_INTERVAL_FAST_MS < S.TICK_INTERVAL_SLOW_MS, 'higher intensity must mean a faster (shorter) tick interval');
+});
+
+test('tickIntervalMs is monotonically non-increasing as intensity rises', () => {
+  let prev = S.tickIntervalMs(0);
+  for (let step = 1; step <= 20; step++) {
+    const cur = S.tickIntervalMs(step / 20);
+    assert.ok(cur <= prev, `tickIntervalMs should not rise as intensity increases`);
+    prev = cur;
+  }
+});
+
+test('tickIntervalMs clamps out-of-range or non-finite intensity into [0, 1]', () => {
+  assert.strictEqual(S.tickIntervalMs(-5), S.TICK_INTERVAL_SLOW_MS);
+  assert.strictEqual(S.tickIntervalMs(5), S.TICK_INTERVAL_FAST_MS);
+  assert.strictEqual(S.tickIntervalMs(NaN), S.TICK_INTERVAL_SLOW_MS);
+  assert.strictEqual(S.tickIntervalMs(undefined), S.TICK_INTERVAL_SLOW_MS);
+});
