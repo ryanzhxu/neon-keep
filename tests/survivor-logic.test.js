@@ -65,3 +65,23 @@ test('MIN_WINDOW_MS is exported as a positive number', () => {
   assert.strictEqual(typeof S.MIN_WINDOW_MS, 'number');
   assert.ok(S.MIN_WINDOW_MS > 0);
 });
+
+// windowMs(1) is the very first thing a player experiences. It must be exactly
+// the documented start value, not just "close" or "less than wave 2".
+test('windowMs(1) equals the documented start value exactly', () => {
+  assert.strictEqual(S.windowMs(1), S.START_WINDOW_MS);
+});
+
+// The endpoints (early is bigger than late, late clamps at very high waves)
+// are already covered above. This checks the ramp actually touches the floor
+// within the normal wave range, and — once there — never creeps back up.
+test('windowMs actually reaches the floor within 200 waves and stays there', () => {
+  let floorWave = null;
+  for (let wave = 1; wave <= 200; wave++) {
+    if (S.windowMs(wave) === S.MIN_WINDOW_MS) { floorWave = wave; break; }
+  }
+  assert.ok(floorWave !== null, 'windowMs never reaches MIN_WINDOW_MS within 200 waves');
+  for (let wave = floorWave; wave <= floorWave + 50; wave++) {
+    assert.strictEqual(S.windowMs(wave), S.MIN_WINDOW_MS, `wave ${wave} should stay at the floor once reached`);
+  }
+});

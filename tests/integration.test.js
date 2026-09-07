@@ -162,3 +162,28 @@ test('budgets do not rise as levels get harder', () => {
       `level ${i + 1} has a larger budget (${budgets[i]}) than level ${i} (${budgets[i - 1]})`);
   }
 });
+
+// Every level must be winnable in principle: a player who never repeats a
+// question type still needs to be able to ask each one before running out of
+// budget. The question-type count is read from the live page rather than
+// hardcoded, since games/guardian/index.html is the source of truth for what
+// question buttons exist and may change independently of this test.
+test('every level budget is large enough to ask every distinct question type at least once', () => {
+  const html = read('games/guardian/index.html');
+  const questionButtonIds = [...html.matchAll(/id="(btn-[a-z]+)"/g)]
+    .map((m) => m[1])
+    .filter((id) => id !== 'btn-retry'); // retry is not a question, it restarts the level
+  const questionTypeCount = questionButtonIds.length;
+  assert.ok(questionTypeCount > 0, 'could not find any question buttons in games/guardian/index.html');
+
+  const sandbox = { window: {} };
+  new Function('window', read('games/guardian/words.js'))(sandbox.window);
+  const levels = sandbox.window.NK_LEVELS;
+  assert.ok(levels.length > 0, 'need at least one level to check');
+
+  for (const lv of levels) {
+    assert.ok(lv.budget >= questionTypeCount,
+      `level "${lv.word}" has budget ${lv.budget}, too small to ask all ${questionTypeCount} question types ` +
+      `(${questionButtonIds.join(', ')}) at least once`);
+  }
+});
