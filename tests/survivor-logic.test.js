@@ -85,3 +85,97 @@ test('windowMs actually reaches the floor within 200 waves and stays there', () 
     assert.strictEqual(S.windowMs(wave), S.MIN_WINDOW_MS, `wave ${wave} should stay at the floor once reached`);
   }
 });
+
+// ---- parry ---------------------------------------------------------------
+// A parry succeeds only inside a tight tail window at the END of the round's
+// timing window. Too early: fails like a wrong dodge. Too late: a timeout.
+
+test('PARRY_TAIL_FRACTION is exported as a fraction of the window', () => {
+  assert.strictEqual(typeof S.PARRY_TAIL_FRACTION, 'number');
+  assert.ok(S.PARRY_TAIL_FRACTION > 0 && S.PARRY_TAIL_FRACTION < 1);
+});
+
+test('parryResult succeeds inside the tail window', () => {
+  const w = 900;
+  const tailStart = w * (1 - S.PARRY_TAIL_FRACTION);
+  assert.strictEqual(S.parryResult(tailStart, w), 'success', 'the tail boundary itself counts as a parry');
+  assert.strictEqual(S.parryResult(w - 1, w), 'success', 'just before the window closes counts as a parry');
+});
+
+test('parryResult fails as an early miss before the tail window', () => {
+  const w = 900;
+  const tailStart = w * (1 - S.PARRY_TAIL_FRACTION);
+  assert.strictEqual(S.parryResult(0, w), 'early');
+  assert.strictEqual(S.parryResult(tailStart - 1, w), 'early');
+});
+
+test('parryResult times out at or after the window closes', () => {
+  const w = 900;
+  assert.strictEqual(S.parryResult(w, w), 'timeout');
+  assert.strictEqual(S.parryResult(w + 500, w), 'timeout');
+});
+
+// ---- combo ----------------------------------------------------------------
+// A parry pays a combo bonus a plain dodge does not.
+
+test('comboGain rewards parry more than dodge', () => {
+  const dodgeGain = S.comboGain('dodge');
+  const parryGain = S.comboGain('parry');
+  assert.strictEqual(typeof dodgeGain, 'number');
+  assert.strictEqual(typeof parryGain, 'number');
+  assert.ok(parryGain > dodgeGain, 'a parry must pay more combo than a dodge');
+  assert.strictEqual(dodgeGain, S.DODGE_COMBO_GAIN);
+  assert.strictEqual(parryGain, S.PARRY_COMBO_GAIN);
+});
+
+// ---- double-attacks and fake-outs -----------------------------------------
+// Higher waves add double-attacks and fake-outs (spec, difficulty ramp).
+
+test('hasDoubleAttack turns on at DOUBLE_ATTACK_WAVE and not before', () => {
+  assert.strictEqual(S.hasDoubleAttack(S.DOUBLE_ATTACK_WAVE - 1), false);
+  assert.strictEqual(S.hasDoubleAttack(S.DOUBLE_ATTACK_WAVE), true);
+  assert.strictEqual(S.hasDoubleAttack(S.DOUBLE_ATTACK_WAVE + 10), true);
+});
+
+test('hasFakeOut turns on at FAKE_OUT_WAVE and not before', () => {
+  assert.strictEqual(S.hasFakeOut(S.FAKE_OUT_WAVE - 1), false);
+  assert.strictEqual(S.hasFakeOut(S.FAKE_OUT_WAVE), true);
+  assert.strictEqual(S.hasFakeOut(S.FAKE_OUT_WAVE + 10), true);
+});
+
+test('fake-outs are introduced on a later wave than double-attacks', () => {
+  assert.ok(S.FAKE_OUT_WAVE > S.DOUBLE_ATTACK_WAVE);
+});
+
+// ---- generalized safe-dodge check ------------------------------------------
+// roundSafeDirs/isSafeDodge must generalize safeDir without changing its
+// result for the plain single-attack, non-fake-out case that already ships.
+
+test('isSafeDodge matches safeDir exactly for a plain single attack', () => {
+  for (const d of S.DIRS) {
+    const safe = S.safeDir(d);
+    assert.strictEqual(S.isSafeDodge([d], false, safe), true, `${safe} should dodge a ${d} attack`);
+    for (const wrong of S.DIRS) {
+      if (wrong === safe) continue;
+      assert.strictEqual(S.isSafeDodge([d], false, wrong), false, `${wrong} should not dodge a ${d} attack`);
+    }
+  }
+});
+
+test('isSafeDodge on a fake-out round requires moving into the telegraphed direction', () => {
+  assert.strictEqual(S.isSafeDodge(['left'], true, 'left'), true);
+  assert.strictEqual(S.isSafeDodge(['left'], true, S.safeDir('left')), false);
+});
+
+test('isSafeDodge on a double-attack round accepts any direction not under attack', () => {
+  const attackDirs = ['left', 'up'];
+  assert.strictEqual(S.isSafeDodge(attackDirs, false, 'right'), true);
+  assert.strictEqual(S.isSafeDodge(attackDirs, false, 'down'), true);
+  assert.strictEqual(S.isSafeDodge(attackDirs, false, 'left'), false);
+  assert.strictEqual(S.isSafeDodge(attackDirs, false, 'up'), false);
+});
+
+test('isSafeDodge rejects a null or unmatched input', () => {
+  assert.strictEqual(S.isSafeDodge(['left'], false, null), false);
+  assert.strictEqual(S.isSafeDodge(['left'], false, 'sideways'), false);
+});

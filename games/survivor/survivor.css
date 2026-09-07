@@ -49,6 +49,7 @@
   width: 100%;
   aspect-ratio: 1 / 1;
   max-height: 70vh;
+  overflow: hidden;
 }
 
 .survivor-canvas {
@@ -59,6 +60,15 @@
   border: 1px solid var(--nk-neon-2);
   background: var(--nk-bg-panel);
   touch-action: none;
+}
+
+/* Death slow-motion: a brief, self-clearing beat on the frozen death frame
+   between the hit-stop pause and the death overlay. Pure CSS transition, no
+   animation frame involved. Cleared on the next run in survivor.js. */
+.survivor-canvas.survivor-slowmo {
+  transition: filter 450ms ease-out, transform 450ms ease-out;
+  filter: grayscale(0.6) brightness(0.7) saturate(1.5) hue-rotate(-8deg);
+  transform: scale(1.04);
 }
 
 .survivor-overlay {
