@@ -39,6 +39,7 @@ const CONTRACT_KEYS = new Set([
 const CONTRACT_API = new Set([
   'NK.store.get', 'NK.store.set', 'NK.store.isMuted', 'NK.store.setMuted',
   'NK.audio.init', 'NK.audio.play', 'NK.audio.isMuted', 'NK.audio.setMuted', 'NK.audio.toggleMuted',
+  'NK.audio.bindMuteButton',
   'NK.juice.shake', 'NK.juice.flash', 'NK.juice.hitStop', 'NK.juice.typewriter',
 ]);
 
@@ -250,9 +251,12 @@ test('every page wires up a mute toggle', () => {
     ['games/guardian/guardian.js', read('games/guardian/guardian.js')],
     ['games/survivor/survivor.js', read('games/survivor/survivor.js')],
   ];
+  // Match the actual invocation (a dot, the method name, an open paren), not
+  // a bare mention of the name — a comment describing the wiring must not be
+  // able to satisfy this on its own if the real call is deleted.
   for (const [name, src] of wired) {
     assert.ok(src.includes('nk-mute-toggle'), `${name} never looks the mute button up`);
-    assert.ok(/setMuted/.test(src), `${name} never changes the mute state`);
-    assert.ok(/isMuted/.test(src), `${name} never reads the persisted mute state`);
+    assert.match(src, /\.bindMuteButton\(/,
+      `${name} never calls NK.audio.bindMuteButton(...) to wire the mute button`);
   }
 });

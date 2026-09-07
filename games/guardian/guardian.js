@@ -61,14 +61,6 @@
     }
   }
 
-  function renderMuteLabel() {
-    var muted = store && typeof store.isMuted === 'function' ? store.isMuted() : false;
-    if (els.muteBtn) {
-      els.muteBtn.textContent = muted ? '🔇 Sound' : '🔊 Sound';
-      els.muteBtn.setAttribute('aria-pressed', String(muted));
-    }
-  }
-
   function updateBudgetUI() {
     var level = currentLevel();
     var pct = level ? Math.max(0, Math.min(100, (state.budgetLeft / level.budget) * 100)) : 0;
@@ -237,14 +229,9 @@
   if (els.guessForm) els.guessForm.addEventListener('submit', onSubmitGuess);
   if (els.btnRetry) els.btnRetry.addEventListener('click', onRetry);
 
-  if (els.muteBtn) {
-    els.muteBtn.addEventListener('click', function () {
-      if (audio && typeof audio.init === 'function') audio.init();
-      var next = !(store && typeof store.isMuted === 'function' ? store.isMuted() : false);
-      if (audio && typeof audio.setMuted === 'function') audio.setMuted(next);
-      renderMuteLabel();
-    });
-  }
+  // NK.audio.bindMuteButton renders the label from the persisted isMuted()
+  // state and calls setMuted() on click; see shared/audio.js.
+  if (audio && typeof audio.bindMuteButton === 'function') audio.bindMuteButton(els.muteBtn);
 
   if (audio && typeof audio.init === 'function') {
     document.addEventListener('click', function initAudioOnce() {
@@ -253,6 +240,5 @@
     }, { once: true });
   }
 
-  renderMuteLabel();
   loadLevel(0);
 })();
