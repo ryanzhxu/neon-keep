@@ -27,16 +27,28 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Re-run tests against the merged tree
+      # The pull request was green against its own head. These run against the
+      # merged tree, which is what actually ships.
+      - name: Syntax-check every JS file
         run: |
           shopt -s globstar nullglob
           files=(**/*.js)
-          for f in "${files[@]}"; do node --check "$f"; done
-          if [ -d tests ]; then
-            node --test tests/
-          else
-            echo "::notice title=No tests yet::tests/ does not exist; skipping."
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error title=No JS::Expected JavaScript sources on main."
+            exit 1
           fi
+          for f in "${files[@]}"; do node --check "$f"; done
+
+      - name: Run tests against the merged tree
+        run: |
+          shopt -s globstar nullglob
+          tests=(tests/**/*.test.js)
+          if [ ${#tests[@]} -eq 0 ]; then
+            echo "::error title=No tests::tests/ has no *.test.js files. The gate would be fake."
+            exit 1
+          fi
+          echo "found ${#tests[@]} test file(s)"
+          node --test 'tests/**/*.test.js'
 
       - uses: actions/configure-pages@v5
 
